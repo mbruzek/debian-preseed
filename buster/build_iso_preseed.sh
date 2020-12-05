@@ -1,42 +1,46 @@
 #!/usr/bin/env bash
 
-# Build an iso image of the debian network installer with a preseed.cfg file
-# included in the iso.
+# Build an ISO image of the Debian network installer with a preseed.cfg file.
 
 # The first variable is the optional Debian version.
 DEBIAN_VERSION=${1:-10.6.0}
 DEBIAN_ISO_FILE_NAME=debian-${DEBIAN_VERSION}-amd64-netinst.iso
 DEBIAN_NETINST_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${DEBIAN_ISO_FILE_NAME}
+OUTPUT_FILE=preseed-${DEBIAN_ISO_FILE_NAME}
+YEAR_MONTH_DAY=$(date "+%Y-%m-%d")
 
+# Ensure the prerequisite software is installed.
 apt install -y isolinux syslinux-utils xorriso wget
 
-# Don't download the image if it has not changed.
+# Do not download the image if it has not changed.
 wget --timestamping ${DEBIAN_NETINST_URL}
 
-mkdir iso
+# Create a working directory.
+mkdir -p iso
 # Restore the iso file to the filesystem in the iso directory.
 xorriso -osirrox on -indev ${DEBIAN_ISO_FILE_NAME} -extract / iso/
 
 chmod +w -R iso/install.amd/
+# Uncompress the initrd gzip.
 gunzip iso/install.amd/initrd.gz
-# Copy the preseed file into the archive.
+# Copy the preseed file into the initrd archive.
 echo preseed.cfg | cpio -H newc -o -A -F iso/install.amd/initrd
-# Copy the sources.list file into the archive.
+# Copy the sources.list file into the initrd archive.
 echo sources.list | cpio -H newc -o -A -F iso/install.amd/initrd
+# Compress the initrd using gzip.
 gzip iso/install.amd/initrd
 chmod -w -R iso/install.amd/
 
+# Generate checksums for each file using relative paths.
 pushd iso/
 chmod +w md5sum.txt
 md5sum `find -follow -type f` > md5sum.txt
 popd
 
-YEAR_MONTH_DAY=$(date "+%Y-%m-%d")
-
 # Recreate the ISO using options to make it bootable on BIOS and EFI systems.
 xorriso -as mkisofs \
-	-r -V "netinst-${YEAR_MONTH_DAY}" \
-	-o preseed.iso \
+	-r -V "preseed-netinst-${YEAR_MONTH_DAY}" \
+	-o ${OUTPUT_FILE} \
 	-cache-inodes \
 	-isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
 	-b isolinux/isolinux.bin \
@@ -47,6 +51,8 @@ xorriso -as mkisofs \
 	-no-emul-boot -isohybrid-gpt-basdat -isohybrid-apm-hfsplus \
 	iso
 
-md5sum preseed.iso > preseed-${YEAR_MONTH_DAY}.md5
+# Create a checksum of the final file for transport.
+md5sum ${OUTPUT_FILE} > ${OUTPUT_FILE}.md5
 
+# Remove the working directory.
 rm -rf iso
