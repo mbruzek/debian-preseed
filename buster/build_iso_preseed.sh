@@ -12,7 +12,7 @@ YEAR_MONTH_DAY=$(date "+%Y-%m-%d")
 # Ensure the prerequisite software is installed.
 apt install -y debconf isolinux syslinux-utils xorriso wget
 
-if [[ $(debconf-set-selections -c preseed.cfg) != 0 ]]; then
+if ! debconf-set-selections -c preseed.cfg ; then
   echo "There is an error in the preseed.cfg. Check the syntax of the preconfiguration file."
   exit 1
 fi
