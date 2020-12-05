@@ -10,7 +10,12 @@ OUTPUT_FILE=preseed-${DEBIAN_ISO_FILE_NAME}
 YEAR_MONTH_DAY=$(date "+%Y-%m-%d")
 
 # Ensure the prerequisite software is installed.
-apt install -y isolinux syslinux-utils xorriso wget
+apt install -y debconf isolinux syslinux-utils xorriso wget
+
+if [[ $(debconf-set-selections -c preseed.cfg) != 0 ]]; then
+  echo "There is an error in the preseed.cfg. Check the syntax of the preconfiguration file."
+  exit 1
+fi
 
 # Do not download the image if it has not changed.
 wget --timestamping ${DEBIAN_NETINST_URL}

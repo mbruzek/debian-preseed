@@ -15,6 +15,7 @@ Debian stable release 10 is code named [buster](buster/) that has an [example-pr
 
 ## References
 
+* [Debian Installer Preseed](https://wiki.debian.org/DebianInstaller/Preseed) wiki
 * [Automating the installation](https://www.debian.org/releases/stable/amd64/apb.en.html)
 * [Contents of the preconfiguration file](https://www.debian.org/releases/buster/amd64/apbs04.en.html)
 * [Inserting the preseed into an ISO](https://wiki.debian.org/DebianInstaller/Preseed/EditIso)
