@@ -3,7 +3,7 @@
 # Build an ISO image of the Debian network installer with a preseed.cfg file.
 
 # The first variable is the optional Debian version.
-DEBIAN_VERSION=${1:-10.6.0}
+DEBIAN_VERSION=${1:-10.7.0}
 DEBIAN_ISO_FILE_NAME=debian-${DEBIAN_VERSION}-amd64-netinst.iso
 DEBIAN_NETINST_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${DEBIAN_ISO_FILE_NAME}
 OUTPUT_FILE=preseed-${DEBIAN_ISO_FILE_NAME}
