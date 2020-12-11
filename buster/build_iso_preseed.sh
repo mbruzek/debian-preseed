@@ -12,15 +12,20 @@ if ! debconf-set-selections -c preseed.cfg ; then
   exit 1
 fi
 
+BASE_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd
+if [[ $1 == "firmware" ]] ; then
+  BASE_URL=https://cdimage.debian.org/images/unofficial/non-free/images-including-firmware/current/amd64/iso-cd
+fi
+
 # The URL to the SHA512SUMS of the CD directory.
-CHECKSUM_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/SHA512SUMS
+CHECKSUM_URL=${BASE_URL}/SHA512SUMS
 # Download the checksum file, do not duplicate if unchanged.
 wget --timestamping ${CHECKSUM_URL}
 
 # The name of the ISO file is on the first line second column.
 ISO_FILE_NAME=$(head -n 1 $(basename ${CHECKSUM_URL}) | awk '{print $2}')
 # Construct the URL to the specific ISO file.
-ISO_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${ISO_FILE_NAME}
+ISO_URL=${BASE_URL}/${ISO_FILE_NAME}
 
 # Download the ISO file, do not duplicate if the image has not changed.
 wget --timestamping ${ISO_URL}
@@ -40,6 +45,47 @@ echo sources.list | cpio -H newc -o -A -F iso/install.amd/initrd
 # Compress the initrd using gzip.
 gzip iso/install.amd/initrd
 chmod -w -R iso/install.amd/
+
+mv iso/boot/grub/grub.cfg iso/boot/grub/original_grub.cfg
+cat << EOF > iso/boot/grub/grub.cfg
+if loadfont $prefix/font.pf2 ; then
+  set gfxmode=800x600
+  set gfxpayload=keep
+  insmod efi_gop
+  insmod efi_uga
+  insmod video_bochs
+  insmod video_cirrus
+  insmod gfxterm
+  insmod png
+  terminal_output gfxterm
+fi
+
+if background_image /isolinux/splash.png; then
+  set color_normal=light-gray/black
+  set color_highlight=white/black
+elif background_image /splash.png; then
+  set color_normal=light-gray/black
+  set color_highlight=white/black
+else
+  set menu_color_normal=cyan/blue
+  set menu_color_highlight=white/blue
+fi
+
+default="0"
+timeout=5
+
+echo ""
+echo "The install starting automatically in 5 seconds, hit 'c' or 'e' to abort."
+echo ""
+
+insmod play
+play 2000 400 4 0 1 500 4 0 1 600 4 0 1 800 6
+menuentry --hotkey=a 'Start automated install...' {
+    set background_color=black
+    linux    /install.amd/vmlinuz auto=true priority=critical vga=788 --- quiet
+    initrd   /install.amd/initrd.gz
+}
+EOF
 
 # Generate checksums for each file using relative paths.
 pushd iso/
