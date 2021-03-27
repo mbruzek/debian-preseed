@@ -1,0 +1,85 @@
+---
+- name: Tasks to create a system using di-netboot-assistant
+  hosts: all
+  become: yes
+  vars:
+    debian_distribution: stable
+    dhcp_range_start: 10.0.1.5
+    dhcp_range_stop: 10.0.1.253
+    domain_name: "example.net"
+    domain_name_servers: 192.168.1.5
+    gateway: 10.0.1.1
+    netboot_address: 10.0.1.2
+    netboot_nic: "{{ lookup('env', 'NIC')|default('eth1', true) }}"
+    preseed_file: "{{ lookup('env', 'PRESEED')|default('preseed.cfg', true) }}"
+    subnet_address: 10.0.1.0
+    subnet_mask: 255.255.255.0
+    tftp_directory: /var/lib/tftpboot
+
+  tasks:
+    - name: Install the prerequisite software
+      package:
+        name: ['di-netboot-assistant', 'isc-dhcp-server', 'tftpd-hpa']
+
+    - name: Create a new interfaces for di-netboot-assistant to use
+      copy:
+        content: |
+          auto {{ netboot_nic }}
+          iface {{ netboot_nic }} inet static
+            address {{ netboot_address }}
+            netmask {{ subnet_mask }}
+        dest: /etc/network/interfaces.d/50_{{ netboot_nic }}_interface
+
+    - name: Ensure the interface is up and running
+      command: ifup {{ netboot_nic }}
+
+    - name: Create a DHCP configuration file
+      copy:
+        content: |
+          option domain-name "{{ domain_name }}";
+          option domain-name-servers {{ domain_name_servers }};
+          default-lease-time 600;
+          max-lease-time 7200;
+          ddns-update-style none;
+          next-server {{ netboot_address }};
+          filename "d-i/n-a/bootnetx64.efi";
+          subnet {{ subnet_address }} netmask {{ subnet_mask }} {
+            option subnet-mask {{ subnet_mask }};
+            option routers {{ gateway }};
+            range {{ dhcp_range_start }} {{ dhcp_range_stop }};
+          }
+        dest: /etc/dhcp/dhcpd.conf
+
+    - name: Set the interface for DHCP
+      lineinfile:
+        regexp: "^INTERFACESv4="
+        line: 'INTERFACESv4="{{ netboot_nic }}"'
+        path: /etc/default/isc-dhcp-server
+
+    - name: Create the tftpboot directory for di-netboot-assistant
+      file:
+        path: "{{ tftp_directory }}"
+        state: directory
+        owner: tftp
+        group: tftp
+
+    - name: Set the tftp directory to something di-netboot-assistant uses
+      lineinfile:
+        regexp: "^TFTP_DIRECTORY="
+        line: 'TFTP_DIRECTORY="{{ tftp_directory}}"'
+        path: /etc/default/tftpd-hpa
+
+    - name: Add verbosity to the tftpd-hpa config file
+      lineinfile:
+        regexp: "^TFTP_OPTIONS="
+        line: 'TFTP_OPTIONS="-vv --secure"'
+        path: /etc/default/tftpd-hpa
+
+    - name: Restart the services to pick up the configuration changes
+      service:
+        name: "{{ item }}"
+        state: restarted
+      with_items: ['isc-dhcp-server', 'tftpd-hpa']
+
+    - name: Install the Debian distribution for the di-netboot-assistant
+      command: di-netboot-assistant install {{ debian_distribution }}

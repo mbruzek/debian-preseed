@@ -13,6 +13,13 @@ up into release folders.
 
 Debian stable release 10 is code named [buster](buster/) that has an [example-preseed.txt](buster/example-preseed.txt) to start with.
 
+# di-netboot-assistant
+
+The Debian Installer Netboot Assistant (di-netboot-assistant) software makes
+it easy to host Debian install images on a system and other systems can use the
+Pre eXecution Environment (PXE) to boot the Debian installers.
+
+
 ## References
 
 * [Debian Installer Preseed](https://wiki.debian.org/DebianInstaller/Preseed) wiki
@@ -21,4 +28,6 @@ Debian stable release 10 is code named [buster](buster/) that has an [example-pr
 * [Inserting the preseed into an ISO](https://wiki.debian.org/DebianInstaller/Preseed/EditIso)
 * [RepackBootableISO](https://wiki.debian.org/RepackBootableISO)
 
+* [DebianInstaller Netboot Assistant](https://wiki.debian.org/DebianInstaller/NetbootAssistant)
+* [di-netboot-assistant manual page](https://manpages.debian.org/unstable/di-netboot-assistant/di-netboot-assistant.1.en.html)
 ---
