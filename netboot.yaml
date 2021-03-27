@@ -11,7 +11,7 @@
     gateway: 10.0.1.1
     netboot_address: 10.0.1.2
     netboot_nic: "{{ lookup('env', 'NIC')|default('eth1', true) }}"
-    preseed_file: "{{ lookup('env', 'PRESEED')|default('preseed.cfg', true) }}"
+    preseed_path: "{{ lookup('env', 'PRESEED')|default('preseed.cfg', true) }}"
     subnet_address: 10.0.1.0
     subnet_mask: 255.255.255.0
     tftp_directory: /var/lib/tftpboot
@@ -81,5 +81,27 @@
         state: restarted
       with_items: ['isc-dhcp-server', 'tftpd-hpa']
 
+    - name: Create the directory for the preseed file
+      file:
+        path: /var/lib/tftpboot/d-i/{{ debian_distribution }}
+        state: directory
+
+    - name: Copy the preseed file to the system and put in dist directory
+      copy:
+        src: "{{ preseed_path }}"
+        dest: /var/lib/tftpboot/d-i/{{ debian_distribution }}/preseed.cfg
+
+    # Uncomment the appropriate sections of prelinux.HEAD and grub.cfg.HEAD
+    # To make attached systems run the automatic installer.
+
+    - name: Edit the grub.cfg.HEAD to play a tune
+      lineinfile:
+        regexp: "^play "
+        line: "play 2000 400 4 0 1 500 4 0 1 600 4 0 1 800 6"
+        path: /etc/di-netboot-assistant/grub.cfg.HEAD
+
     - name: Install the Debian distribution for the di-netboot-assistant
       command: di-netboot-assistant install {{ debian_distribution }}
+
+    - name: Rebuild di-netboot-assistant menu
+      command: di-netboot-assistant rebuild-menu
