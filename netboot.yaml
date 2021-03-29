@@ -42,11 +42,18 @@
           max-lease-time 7200;
           ddns-update-style none;
           next-server {{ netboot_address }};
-          filename "d-i/n-a/bootnetx64.efi";
+
           subnet {{ subnet_address }} netmask {{ subnet_mask }} {
             option subnet-mask {{ subnet_mask }};
             option routers {{ gateway }};
             range {{ dhcp_range_start }} {{ dhcp_range_stop }};
+          }
+
+          # By default offer the legacy BIOS image.
+          filename "d-i/n-a/pxelinux.0";
+          # When type is UEFI offer the efi image.
+          if option pxe-system-type = 00:07 {
+            filename "d-i/n-a/bootnetx64.efi";
           }
         dest: /etc/dhcp/dhcpd.conf
 
@@ -81,27 +88,58 @@
         state: restarted
       with_items: ['isc-dhcp-server', 'tftpd-hpa']
 
+    - name: Install the Debian distribution for the di-netboot-assistant
+      command: di-netboot-assistant install {{ debian_distribution }}
+
     - name: Create the directory for the preseed file
       file:
-        path: /var/lib/tftpboot/d-i/{{ debian_distribution }}
+        path: /var/lib/tftpboot/d-i/buster
         state: directory
 
     - name: Copy the preseed file to the system and put in dist directory
       copy:
         src: "{{ preseed_path }}"
-        dest: /var/lib/tftpboot/d-i/{{ debian_distribution }}/preseed.cfg
+        dest: /var/lib/tftpboot/d-i/buster/preseed.cfg
 
-    # Uncomment the appropriate sections of prelinux.HEAD and grub.cfg.HEAD
-    # To make attached systems run the automatic installer.
+    - name: Create an entry to boot the automatic installer with the preseed file
+      blockinfile:
+        backup: yes
+        block: |
+          TIMEOUT 100
+          LABEL preseed
+             MENU LABEL Debian netboot (amd64) + preseed
+             kernel ::/d-i/n-a/{{ debian_distribution }}/amd64/linux
+             append initrd=::/d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz --- auto=true priority=critical url=tftp://{{ netboot_address }}
+        path: /etc/di-netboot-assistant/pxelinux.HEAD
+
+    - name: Edit the pxeboot.cfg.HEAD file to default to the preseed menu
+      lineinfile:
+        regexp: "^DEFAULT "
+        line: DEFAULT preseed
+        path: /etc/di-netboot-assistant/pxelinux.HEAD
+
+    - name: Create a menu entry to boot the automatic installer with the preseed file
+      blockinfile:
+        backup: yes
+        block: |
+          set timeout=10
+          menuentry 'preseed' {
+             linux /d-i/n-a/{{ debian_distribution }}/amd64/linux --- auto=true priority=critical url=tftp://{{ netboot_address }}
+             initrd /d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz
+          }
+        path: /etc/di-netboot-assistant/grub.cfg.HEAD
+
+    - name: Edit the grub.cfg.HEAD file to auto boot with the preseed file
+      lineinfile:
+        regexp: "^set default="
+        line: "set default='preseed'"
+        path: /etc/di-netboot-assistant/grub.cfg.HEAD
 
     - name: Edit the grub.cfg.HEAD to play a tune
       lineinfile:
         regexp: "^play "
         line: "play 2000 400 4 0 1 500 4 0 1 600 4 0 1 800 6"
         path: /etc/di-netboot-assistant/grub.cfg.HEAD
-
-    - name: Install the Debian distribution for the di-netboot-assistant
-      command: di-netboot-assistant install {{ debian_distribution }}
 
     - name: Rebuild di-netboot-assistant menu
       command: di-netboot-assistant rebuild-menu
