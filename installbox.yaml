@@ -17,25 +17,9 @@
       package:
         name: ['di-netboot-assistant', 'dnsmasq', 'nftables']
 
-    - name: Stop dnsmasq and prevent it from starting at boot
-      service:
-        name: dnsmasq
-        state: stopped
-        enabled: no
-
-    - name: Create the dnsmasq configuration
+    - name: Configure the di-netboot-assistant interface
       copy:
-        content: |
-          dhcp-range={{ dhcp_range_start }},{{ dhcp_range_stop }},2h
-          enable-tftp
-          tftp-root={{ tftp_directory }}
-          dhcp-boot=d-i/n-a/pxelinux.0
-          dhcp-match=set:efi-x86_64,option:client-arch,7
-          dhcp-boot=tag:efi-x86_64,d-i/n-a/bootnetx64.efi
-        dest: /etc/dnsmasq.d/netboot-dnsmasq.conf
-
-    - name: Configure the netboot interface
-      copy:
+        backup: yes
         content: |
           auto {{ netboot_nic }}
           iface {{ netboot_nic }} inet static
@@ -45,6 +29,24 @@
 
     - name: Ensure the interface is up and running
       command: ifup {{ netboot_nic }}
+
+    - name: Stop dnsmasq and prevent it from starting at boot
+      service:
+        name: dnsmasq
+        state: stopped
+        enabled: no
+
+    - name: Create the dnsmasq configuration file
+      copy:
+        backup: yes
+        content: |
+          dhcp-range={{ dhcp_range_start }},{{ dhcp_range_stop }},2h
+          enable-tftp
+          tftp-root={{ tftp_directory }}
+          dhcp-boot=d-i/n-a/pxelinux.0
+          dhcp-match=set:efi-x86_64,option:client-arch,7
+          dhcp-boot=tag:efi-x86_64,d-i/n-a/bootnetx64.efi
+        dest: /etc/dnsmasq.d/netboot-dnsmasq.conf
 
     - name: Enable ipv4 forwarding
       sysctl:

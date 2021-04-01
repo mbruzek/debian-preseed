@@ -19,22 +19,24 @@
   tasks:
     - name: Install the prerequisite software
       package:
-        name: ['di-netboot-assistant', 'isc-dhcp-server', 'tftpd-hpa']
+        name: ['di-netboot-assistant', 'isc-dhcp-server', 'nftables', 'tftpd-hpa']
 
-    - name: Create a new interfaces for di-netboot-assistant to use
+    - name: Configure the di-netboot-assistant interface
       copy:
+        backup: yes
         content: |
           auto {{ netboot_nic }}
           iface {{ netboot_nic }} inet static
             address {{ netboot_address }}
             netmask {{ subnet_mask }}
-        dest: /etc/network/interfaces.d/50_{{ netboot_nic }}_interface
+        dest: /etc/network/interfaces.d/50_interface_{{ netboot_nic }}
 
     - name: Ensure the interface is up and running
       command: ifup {{ netboot_nic }}
 
-    - name: Create a DHCP configuration file
+    - name: Create the DHCP configuration file
       copy:
+        backup: yes
         content: |
           option domain-name "{{ domain_name }}";
           option domain-name-servers {{ domain_name_servers }};
@@ -90,6 +92,25 @@
         sysctl_file: /etc/sysctl.d/netboot-sysctl.conf
         state: present
         reload: yes
+
+    - name: Configure NAT and masquerading
+      command: "{{ item }}"
+      with_items:
+        - nft add table nat
+        - nft add chain nat prerouting { type nat hook prerouting priority 0 \; }
+        - nft add chain nat postrouting { type nat hook postrouting priority 100 \; }
+        - nft add rule nat postrouting masquerade
+
+    - name: Save original nftables.conf configuration
+      copy:
+        src: /etc/nftables.conf
+        dest: /etc/nftables.conf.orig
+        remote_src: yes
+
+    - name: Save the current ruleset as the configuration
+      shell: nft list ruleset > /etc/nftables.conf
+      args:
+        executable: /bin/bash
 
     - name: Restart the services to pick up the configuration changes
       service:
