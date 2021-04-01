@@ -15,7 +15,7 @@
   tasks:
     - name: Install the prerequisite software
       package:
-        name: ['debian-installer-netboot-amd64', 'di-netboot-assistant', 'dnsmasq', 'nftables']
+        name: ['di-netboot-assistant', 'dnsmasq', 'nftables']
 
     - name: Stop dnsmasq and prevent it from starting at boot
       service:
@@ -23,7 +23,7 @@
         state: stopped
         enabled: no
 
-    - name: Copy the dnsmasq configuration
+    - name: Create the dnsmasq configuration
       copy:
         content: |
           dhcp-range={{ dhcp_range_start }},{{ dhcp_range_stop }},2h
@@ -34,13 +34,6 @@
           dhcp-boot=tag:efi-x86_64,d-i/n-a/bootnetx64.efi
         dest: /etc/dnsmasq.d/netboot-dnsmasq.conf
 
-    - name: Create the directory for the debian-installer-netboot-amd64 images
-      file:
-        path: "{{ tftp_directory }}/d-i/n-pkg"
-        state: directory
-        owner: tftp
-        group: tftp
-
     - name: Configure the netboot interface
       copy:
         content: |
@@ -48,18 +41,10 @@
           iface {{ netboot_nic }} inet static
             address {{ netboot_address }}
             netmask {{ subnet_mask }}
-        dest: /etc/network/interfaces.d/50_{{ netboot_nic }}_interface
+        dest: /etc/network/interfaces.d/50_interface_{{ netboot_nic }}
 
     - name: Ensure the interface is up and running
-      command: ip link set {{ netboot_nic }} up
-
-    - name: Make packaged installer files available
-      mount:
-        src: /usr/lib/debian-installer
-        path: "{{ tftp_directory }}/d-i/n-pkg"
-        opts: bind
-        state: mounted
-        fstype: none
+      command: ifup {{ netboot_nic }}
 
     - name: Enable ipv4 forwarding
       sysctl:
@@ -106,13 +91,13 @@
 
     - name: Create the directory for the preseed file
       file:
-        path: /var/lib/tftpboot/d-i/buster
+        path: "{{ tftp_directory }}/d-i/buster"
         state: directory
 
     - name: Copy the preseed file to the system and put in dist directory
       copy:
         src: "{{ preseed_path }}"
-        dest: /var/lib/tftpboot/d-i/buster/preseed.cfg
+        dest: "{{ tftp_directory }}/d-i/buster/preseed.cfg"
 
     - name: Create an entry to boot the automatic installer with the preseed file
       blockinfile:
