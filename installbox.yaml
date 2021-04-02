@@ -48,6 +48,11 @@
           dhcp-boot=tag:efi-x86_64,d-i/n-a/bootnetx64.efi
         dest: /etc/dnsmasq.d/netboot-dnsmasq.conf
 
+    - name: Create the tftpboot directory for di-netboot-assistant
+      file:
+        path: "{{ tftp_directory }}"
+        state: directory
+
     - name: Enable ipv4 forwarding
       sysctl:
         name: net.ipv4.ip_forward
@@ -76,17 +81,11 @@
       args:
         executable: /bin/bash
 
-    - name: Start the nftables service
+    - name: Restart the services to load the configuration changes
       service:
-        name: nftables
+        name: "{{ item }}"
         state: restarted
-        enabled: yes
-
-    - name: Start the dnsmasq service
-      service:
-        name: dnsmasq
-        state: started
-        enabled: yes
+      with_items: ['dnsmasq', 'nftables']
 
     - name: Install the Debian distribution for the di-netboot-assistant
       command: di-netboot-assistant install {{ debian_distribution }}
@@ -105,7 +104,7 @@
       blockinfile:
         backup: yes
         block: |
-          TIMEOUT 100
+          TIMEOUT 40
           LABEL preseed
              MENU LABEL Debian netboot (amd64) + preseed
              kernel ::/d-i/n-a/{{ debian_distribution }}/amd64/linux
@@ -122,7 +121,7 @@
       blockinfile:
         backup: yes
         block: |
-          set timeout=10
+          set timeout=4
           menuentry 'preseed' {
              linux /d-i/n-a/{{ debian_distribution }}/amd64/linux --- auto=true priority=critical url=tftp://{{ netboot_address }}
              initrd /d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz

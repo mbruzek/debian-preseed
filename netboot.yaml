@@ -116,26 +116,26 @@
       service:
         name: "{{ item }}"
         state: restarted
-      with_items: ['isc-dhcp-server', 'tftpd-hpa']
+      with_items: ['isc-dhcp-server', 'nftables', 'tftpd-hpa']
 
     - name: Install the Debian distribution for the di-netboot-assistant
       command: di-netboot-assistant install {{ debian_distribution }}
 
     - name: Create the directory for the preseed file
       file:
-        path: /var/lib/tftpboot/d-i/buster
+        path: "{{ tftp_directory }}/d-i/buster"
         state: directory
 
     - name: Copy the preseed file to the system and put in dist directory
       copy:
         src: "{{ preseed_path }}"
-        dest: /var/lib/tftpboot/d-i/buster/preseed.cfg
+        dest: "{{ tftp_directory }}/d-i/buster/preseed.cfg"
 
     - name: Create an entry to boot the automatic installer with the preseed file
       blockinfile:
         backup: yes
         block: |
-          TIMEOUT 100
+          TIMEOUT 40
           LABEL preseed
              MENU LABEL Debian netboot (amd64) + preseed
              kernel ::/d-i/n-a/{{ debian_distribution }}/amd64/linux
@@ -152,7 +152,7 @@
       blockinfile:
         backup: yes
         block: |
-          set timeout=10
+          set timeout=4
           menuentry 'preseed' {
              linux /d-i/n-a/{{ debian_distribution }}/amd64/linux --- auto=true priority=critical url=tftp://{{ netboot_address }}
              initrd /d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz
