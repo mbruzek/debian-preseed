@@ -8,7 +8,6 @@
     dhcp_range_stop: 10.0.1.253
     domain_name: "example.net"
     domain_name_servers: 192.168.1.5
-    gateway: 10.0.1.1
     netboot_address: 10.0.1.2
     netboot_nic: "{{ lookup('env', 'NIC')|default('eth1', true) }}"
     preseed_path: "{{ lookup('env', 'PRESEED')|default('preseed.cfg', true) }}"
@@ -19,7 +18,7 @@
   tasks:
     - name: Install the prerequisite software
       package:
-        name: ['di-netboot-assistant', 'isc-dhcp-server', 'nftables', 'tftpd-hpa']
+        name: ['di-netboot-assistant', 'isc-dhcp-server', 'nftables', 'tftpd-hpa', 'unzip']
 
     - name: Configure the di-netboot-assistant interface
       copy:
@@ -47,7 +46,7 @@
 
           subnet {{ subnet_address }} netmask {{ subnet_mask }} {
             option subnet-mask {{ subnet_mask }};
-            option routers {{ gateway }};
+            option routers {{ netboot_address }};
             range {{ dhcp_range_start }} {{ dhcp_range_stop }};
           }
 

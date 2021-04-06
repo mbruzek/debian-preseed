@@ -15,7 +15,7 @@
   tasks:
     - name: Install the prerequisite software
       package:
-        name: ['di-netboot-assistant', 'dnsmasq', 'nftables']
+        name: ['di-netboot-assistant', 'dnsmasq', 'nftables', 'unzip']
 
     - name: Configure the di-netboot-assistant interface
       copy:
