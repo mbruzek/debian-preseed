@@ -83,6 +83,7 @@
 
     - name: Restart the services to load the configuration changes
       service:
+        enabled: true
         name: "{{ item }}"
         state: restarted
       with_items: ['dnsmasq', 'nftables']

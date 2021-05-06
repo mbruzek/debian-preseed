@@ -113,6 +113,7 @@
 
     - name: Restart the services to pick up the configuration changes
       service:
+        enabled: true
         name: "{{ item }}"
         state: restarted
       with_items: ['isc-dhcp-server', 'nftables', 'tftpd-hpa']
