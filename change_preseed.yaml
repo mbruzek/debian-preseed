@@ -1,0 +1,74 @@
+# So changing the preseed is not enough when booting PXE, the grub boot
+# instructions also have to be updated for the network values to work.
+---
+- name: Tasks to change the preseed and grub settings for di-netboot-assistant
+  hosts: all
+  become: yes
+  vars:
+
+    debian_distribution: stable
+    netboot_address: 10.0.1.2
+    preseed_path: preseed.cfg
+    target_domain: example.net
+    target_hostname: undefined
+    target_nic: eth0
+    tftp_directory: /var/lib/tftpboot
+
+  tasks:
+
+    - name: Create the directory for the preseed file
+      file:
+        path: "{{ tftp_directory }}/d-i/buster"
+        state: directory
+
+    - name: Copy the preseed file to the system and put in the dist directory
+      copy:
+        src: "{{ preseed_path }}"
+        dest: "{{ tftp_directory }}/d-i/buster/preseed.cfg"
+
+    - name: Assemble boot parameters
+      set_fact:
+        boot_parameters: >-
+          auto=true
+          domain={{ target_domain }}
+          hostname={{ target_hostname }}
+          netcfg/choose_interface={{ target_nic }}
+          priority=critical
+          url=tftp://{{ netboot_address }}
+
+    - name: Create an entry to boot the automatic installer with the preseed file
+      blockinfile:
+        backup: yes
+        block: |
+          TIMEOUT 40
+          LABEL preseed
+             MENU LABEL Debian netboot (amd64) + preseed
+             kernel ::/d-i/n-a/{{ debian_distribution }}/amd64/linux
+             append initrd=::/d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz --- {{ boot_parmeters }}
+        path: /etc/di-netboot-assistant/pxelinux.HEAD
+
+    - name: Edit the pxeboot.cfg.HEAD file to default to the preseed menu
+      lineinfile:
+        regexp: "^DEFAULT "
+        line: DEFAULT preseed
+        path: /etc/di-netboot-assistant/pxelinux.HEAD
+
+    - name: Create a menu entry to boot the automatic installer with the preseed file
+      blockinfile:
+        backup: yes
+        block: |
+          set timeout=4
+          menuentry 'preseed' {
+             linux /d-i/n-a/{{ debian_distribution }}/amd64/linux --- {{ boot_parameters }}
+             initrd /d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz
+          }
+        path: /etc/di-netboot-assistant/grub.cfg.HEAD
+
+    - name: Edit the grub.cfg.HEAD file to auto boot with the preseed file
+      lineinfile:
+        regexp: "^set default="
+        line: "set default='preseed'"
+        path: /etc/di-netboot-assistant/grub.cfg.HEAD
+
+    - name: Rebuild di-netboot-assistant menu
+      command: di-netboot-assistant rebuild-menu

@@ -101,6 +101,16 @@
         src: "{{ preseed_path }}"
         dest: "{{ tftp_directory }}/d-i/buster/preseed.cfg"
 
+    # Since the system boots from the network (PXE) the installer gets the
+    # hostname and domain from the DHCP server. Therefore you can not set up
+    # the host.domain with the preseed file. These values must be provided as
+    # boot parameters.
+    # Critical priority makes the installer prompt only for critical questions.
+    # net.ifnames=0 makes the kernel use the traditional style of naming NICs.
+    - name: Assemble the boot parameters
+      set_fact:
+        boot_parameters: auto=true net.ifnames=0 netcfg/choose_interface=eth0 priority=critical url=tftp://{{ netboot_address }}
+
     - name: Create an entry to boot the automatic installer with the preseed file
       blockinfile:
         backup: yes
@@ -109,7 +119,7 @@
           LABEL preseed
              MENU LABEL Debian netboot (amd64) + preseed
              kernel ::/d-i/n-a/{{ debian_distribution }}/amd64/linux
-             append initrd=::/d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz --- auto=true priority=critical url=tftp://{{ netboot_address }}
+             append initrd=::/d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz --- {{ boot_parmeters }}
         path: /etc/di-netboot-assistant/pxelinux.HEAD
 
     - name: Edit the pxeboot.cfg.HEAD file to default to the preseed menu
@@ -124,7 +134,7 @@
         block: |
           set timeout=4
           menuentry 'preseed' {
-             linux /d-i/n-a/{{ debian_distribution }}/amd64/linux --- auto=true priority=critical url=tftp://{{ netboot_address }}
+             linux /d-i/n-a/{{ debian_distribution }}/amd64/linux --- {{ boot_parameters }}
              initrd /d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz
           }
         path: /etc/di-netboot-assistant/grub.cfg.HEAD
