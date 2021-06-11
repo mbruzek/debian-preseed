@@ -44,7 +44,7 @@
           LABEL preseed
              MENU LABEL Debian netboot (amd64) + preseed
              kernel ::/d-i/n-a/{{ debian_distribution }}/amd64/linux
-             append initrd=::/d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz --- {{ boot_parmeters }}
+             append initrd=::/d-i/n-a/{{ debian_distribution }}/amd64/initrd.gz --- {{ boot_parameters }}
         path: /etc/di-netboot-assistant/pxelinux.HEAD
 
     - name: Edit the pxeboot.cfg.HEAD file to default to the preseed menu
