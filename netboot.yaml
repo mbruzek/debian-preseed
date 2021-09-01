@@ -1,21 +1,27 @@
 ---
-- name: Tasks to create a system using di-netboot-assistant
+- name: Tasks to create system using di-netboot-assistant, dhcp and tftp-hpa
   hosts: all
   become: yes
+
   vars:
-    debian_distribution: stable
+
+    debian_codename: "{{ lookup('env', 'CODENAME')|default('bullseye', true) }}"
+    debian_distribution: "{{ lookup('env', 'DISTRIBUTION')|default('stable', true) }}"
     dhcp_range_start: 10.0.1.5
     dhcp_range_stop: 10.0.1.253
-    domain_name: "example.net"
     domain_name_servers: 192.168.1.5
     netboot_address: 10.0.1.2
     netboot_nic: "{{ lookup('env', 'NIC')|default('eth1', true) }}"
     preseed_path: "{{ lookup('env', 'PRESEED')|default('preseed.cfg', true) }}"
+    target_domain: "{{ lookup('env', 'PRESEED_DOMAIN')|default('example.net', true) }}"
+    target_hostname: "{{ lookup('env', 'PRESEED_HOSTNAME')|default('undefined', true) }}"
+    target_nic: "{{ lookup('env', 'PRESEED_NIC')|default('eth0', true) }}"
     subnet_address: 10.0.1.0
     subnet_mask: 255.255.255.0
     tftp_directory: /var/lib/tftpboot
 
   tasks:
+
     - name: Install the prerequisite software
       package:
         name: ['di-netboot-assistant', 'isc-dhcp-server', 'nftables', 'tftpd-hpa', 'unzip']
@@ -37,7 +43,7 @@
       copy:
         backup: yes
         content: |
-          option domain-name "{{ domain_name }}";
+          option domain-name "{{ target_domain }}";
           option domain-name-servers {{ domain_name_servers }};
           default-lease-time 600;
           max-lease-time 7200;
@@ -123,13 +129,13 @@
 
     - name: Create the directory for the preseed file
       file:
-        path: "{{ tftp_directory }}/d-i/buster"
+        path: "{{ tftp_directory }}/d-i/{{ debian_codename }}"
         state: directory
 
     - name: Copy the preseed file to the system and put in dist directory
       copy:
         src: "{{ preseed_path }}"
-        dest: "{{ tftp_directory }}/d-i/buster/preseed.cfg"
+        dest: "{{ tftp_directory }}/d-i/{{ debian_codename }}/preseed.cfg"
 
     # Since the system boots from the network (PXE) the installer gets the
     # hostname and domain from the DHCP server. Therefore you can not set up
@@ -137,9 +143,15 @@
     # boot parameters.
     # Critical priority makes the installer prompt only for critical questions.
     # net.ifnames=0 makes the kernel use the traditional style of naming NICs.
-    - name: Assemble the boot parameters
+    - name: Assemble boot parameters
       set_fact:
-        boot_parameters: auto=true net.ifnames=0 netcfg/choose_interface=eth0 priority=critical url=tftp://{{ netboot_address }}
+        boot_parameters: >-
+          auto=true
+          domain={{ target_domain }}
+          hostname={{ target_hostname }}
+          netcfg/choose_interface={{ target_nic }}
+          priority=critical
+          url=tftp://{{ netboot_address }}
 
     - name: Create an entry to boot the automatic installer with the preseed file
       blockinfile:

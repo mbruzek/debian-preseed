@@ -22,9 +22,17 @@ This will help find line continuation issues and other syntax errors before the
 installer does with unhelpful messages. Watch out for spaces AFTER the line
 continuation character backslash (\\).
 
+## bullseye
+
+The latest release as of this document is Debian version 11 code named
+[bullseye](bullseye/) and the [example-preseed.txt](bullseye/example-preseed.txt)
+is the preconfiguration file to start with for this release.
+
 ## buster
 
-Debian stable release 10 is code named [buster](buster/) that has an [example-preseed.txt](buster/example-preseed.txt) to start with.
+Debian version 10 code named [buster](buster/) that has an
+[example-preseed.txt](buster/example-preseed.txt) to start with for the buster
+release.
 
 # di-netboot-assistant
 
@@ -42,6 +50,11 @@ the installer will not overwrite these values from the preseed file.
 
 To set these network values, one can provide them as parameters to the installer
 from the grub boot instruction.
+
+## Troubleshooting
+
+If running a PXE on a VM remember the host firewall must allow PXE port 69 and
+DHCP traffic to the VM TCP&UDP port 53 UDP port 67.
 
 ## References
 
