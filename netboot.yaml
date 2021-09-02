@@ -13,11 +13,11 @@
     netboot_address: 10.0.1.2
     netboot_nic: "{{ lookup('env', 'NIC')|default('eth1', true) }}"
     preseed_path: "{{ lookup('env', 'PRESEED')|default('preseed.cfg', true) }}"
+    subnet_address: 10.0.1.0
+    subnet_mask: 255.255.255.0
     target_domain: "{{ lookup('env', 'PRESEED_DOMAIN')|default('example.net', true) }}"
     target_hostname: "{{ lookup('env', 'PRESEED_HOSTNAME')|default('undefined', true) }}"
     target_nic: "{{ lookup('env', 'PRESEED_NIC')|default('eth0', true) }}"
-    subnet_address: 10.0.1.0
-    subnet_mask: 255.255.255.0
     tftp_directory: /var/lib/tftpboot
 
   tasks:
@@ -149,6 +149,7 @@
           auto=true
           domain={{ target_domain }}
           hostname={{ target_hostname }}
+          net.ifnames=0
           netcfg/choose_interface={{ target_nic }}
           priority=critical
           url=tftp://{{ netboot_address }}

@@ -119,6 +119,7 @@
           auto=true
           domain={{ target_domain }}
           hostname={{ target_hostname }}
+          net.ifnames=0
           netcfg/choose_interface={{ target_nic }}
           priority=critical
           url=tftp://{{ netboot_address }}
